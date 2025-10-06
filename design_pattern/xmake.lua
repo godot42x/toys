@@ -1,7 +1,8 @@
 add_rules("mode.debug", "mode.release")
+set_languages("cxx20")
 
 
-for _, file in ipairs(os.files("src/*.cpp")) do
+for _, file in ipairs(os.files("src/**.cpp")) do
     local filename = path.basename(file)
     -- Extract short name (e.g., "1_1" from "1_1-simple_factory.cpp", or 1 from "1-another_example.cpp")
     local short_name = filename:match("^(%d+_+%d+)-") or filename:match("^(%d+)-")
