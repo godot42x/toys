@@ -1,3 +1,5 @@
+source ~/.vim_common/common.vim
+
 set encoding=utf-8
 set nobackup
 set nowritebackup
@@ -55,3 +57,6 @@ nnoremap <silent><nowait> <space>l6  :call VSCodeCall('editor.foldLevel6') <CR>
 
 
 
+
+" replace a.b=c; -> .a=c,
+:let @s="I<esc>dfc.i.<esc>f;r,"
