@@ -31,6 +31,23 @@ function Add-DirectoryToPath {
     }
 }
 
+function New-DirectoryLink{
+	param(
+        [Parameter(Mandatory=$true)]
+        [string]$from,
+        [Parameter(Mandatory=$true)]
+		[string]$to
+	)
+	
+
+	if (Test-Path($to)) {
+	}else{
+		New-Item -Type Directory $to
+	}
+	New-Item -Type Symbolic -Target $to -Path $from
+	
+}
+
 function Kill-All {
     param(
         [Parameter(Mandatory=$true)]

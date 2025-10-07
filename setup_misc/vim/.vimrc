@@ -1,3 +1,4 @@
+source ~/.vim_common/common.vim
 
 function! IsCppSourceFile()
   	let filetype = &ft
@@ -64,12 +65,12 @@ endif
 
 "set termguicolors
 "tmux Error color setting
-" Enable true color 启用终端24位色
-"if exists('+termguicolors')
-"   let &t_8f = "\<Esc>[38;2;%lu;%lu;%lum"
-"   let &t_8b = "\<Esc>[48;2;%lu;%lu;%lum"
-"   set termguicolors
-"endif
+"Enable true color 启用终端24位色
+if exists('+termguicolors')
+   let &t_8f = "\<Esc>[38;2;%lu;%lu;%lum"
+   let &t_8b = "\<Esc>[48;2;%lu;%lu;%lum"
+   set termguicolors
+endif
 
 
 " cursor shape
@@ -139,7 +140,7 @@ set wildmode=list:full
 "set wildmenu
 
 "set background=dark " for the dark version
-" set background=light " for the light version
+set background=light " for the light version
 colorscheme onedark
 
 

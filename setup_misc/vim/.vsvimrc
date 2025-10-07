@@ -1,3 +1,5 @@
+source ~/.vim_common/common.vim
+
 map gi :vsc Edit.GoToImplementation<CR>
 nmap gd :vsc Edit.GoToDefinition<CR>
 nmap gr :vsc Edit.FindAllReferences<CR>
@@ -7,8 +9,15 @@ nmap <C-I> :vsc View.NavigateForward<CR>
 set hlsearch
 set incsearch
 
+" DISABLE C-w to enter visual mode:
+
+
+
 nmap <C-O> :vsc View.NavigateBackward<CR>
 nmap <C-I> :vsc View.NavigateForward<CR>
+"close current document
+nmap <C-w> :vsc File.Close<CR>
 nmap K :vsc Edit.QuickInfo<CR>
+
 
 

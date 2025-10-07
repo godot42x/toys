@@ -1,0 +1,48 @@
+" .ideavimrc is a configuration file for ideavim plugin. it uses
+"   the same commands as the original .vimrc configuration.
+" you can find a list of commands here: https://jb.gg/h38q75
+" find more examples here: https://jb.gg/share-ideavimrc
+
+" source your .vimrc
+" source ~/.vimrc
+
+source ~/.vim_common/common.vim
+"" -- suggested options --
+" show a few lines of context around the cursor. note that this makes the
+" text scroll if you mouse-click near the start or end of the window.
+set scrolloff=5
+
+set hlsearch
+" do incremental searching.
+set incsearch
+
+" don't use ex mode, use q for formatting.
+map q gq
+
+" --- enable ideavim plugins https://jb.gg/ideavim-plugins
+
+" highlight copied text
+plug 'machakann/vim-highlightedyank'
+" commentary plugin
+plug 'tpope/vim-commentary'
+
+
+"" -- map ide actions to ideavim -- https://jb.gg/abva4t
+"" map \r to the reformat code action
+"map \r <action>(reformatcode)
+
+"" map <leader>d to start debug
+"map <leader>d <action>(debug)
+
+"" map \b to toggle the breakpoint on the current line
+map \b <action>(togglelinebreakpoint)
+
+" map space + g + ]/[ to go to next/previous error
+nmap <leader>]g <action>(nexterror)
+nmap <leader>[g <action>(previouserror)
+
+
+
+nnoremap za :action collapseregionrecursively<cr>
+nnoremap za :action expandregionrecursively<cr>
+

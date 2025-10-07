@@ -4,6 +4,7 @@ import platform
 import subprocess
 import sys
 import shutil
+from colorama import Fore, Back, Style
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 HOME_DIR = os.path.expanduser("~")
@@ -39,6 +40,7 @@ def create_symlink(src, dst):
     :param src: The source file or directory.
     :param dst: The destination path for the symbolic link.
     """
+    print(f"{Fore.GREEN}{src}{Style.RESET_ALL}")
     src = os.path.abspath(src)
     dst = os.path.abspath(dst)
 
@@ -156,33 +158,40 @@ def main():
     files_to_link= []
     if system == "Linux":
         files_to_link = [
-            (".bashrc", os.path.join(HOME_DIR, ".bashrc")),
-            (".vimrc", os.path.join(HOME_DIR, ".vimrc")),
-            (".ideavimrc", os.path.join(HOME_DIR, ".ideavimrc")),
+            # vim
+            #("./vim/.bashrc", os.path.join(HOME_DIR, ".bashrc")),
+            #("./vim/.vimrc", os.path.join(HOME_DIR, ".vimrc")),
+            #("./vim/.ideavimrc", os.path.join(HOME_DIR, ".ideavimrc")),
+            # coc
             ("coc-settings.json", os.path.join(HOME_DIR, ".config", "nvim", "coc-settings.json")),
             ("coc-settings.json", os.path.join(HOME_DIR, ".vim", "coc-settings.json")),
-
+            # neon-vim
             ("init.lua", os.path.join(HOME_DIR, ".config", "nvim", "init.lua")),
-            ("init.lua",  os.path.join(HOME_DIR, ".vimrc.lua")),
-
+            #("init.lua",  os.path.join(HOME_DIR, ".vimrc.lua")),
+            # fish
             ("config.fish", os.path.join(HOME_DIR, ".config", "fish", "config.fish")),
             ("config.fish", os.path.join(HOME_DIR,  ".fishrc")),
         ]
     elif system == "Windows":
         files_to_link = [
-            (".vimrc", os.path.join(HOME_DIR, ".vimrc")),
-            (".ideavimrc", os.path.join(HOME_DIR, ".ideavimrc")),
-            (".vsvimrc", os.path.join(HOME_DIR, ".vsvimrc")),
-            (".vscodevimrc", os.path.join(HOME_DIR, ".vscodevimrc")),
-
+            # vim
             ("init.lua", os.path.join(HOME_DIR, "AppData", "Local", "nvim", "init.lua")),
-            ("init.lua",  os.path.join(HOME_DIR, ".vimrc.lua")),
 
             ("coc-settings.json", os.path.join(HOME_DIR, "AppData", "Local", "nvim", "coc-settings.json")),
 
             ("Profile.ps1", os.path.join(HOME_DIR, "Documents", "PowerShell", "Profile.ps1")),
             ("Profile.ps1", os.path.join(HOME_DIR,  ".pwshrc"))
         ]
+
+    files_to_link.extend([
+        ("./vim/.vimrc", os.path.join(HOME_DIR, ".vimrc")),
+        ("./vim/.ideavimrc", os.path.join(HOME_DIR, ".ideavimrc")),
+        ("./vim/.vsvimrc", os.path.join(HOME_DIR, ".vsvimrc")),
+        ("./vim/.vscodevimrc", os.path.join(HOME_DIR, ".vscodevimrc")),
+        ("init.lua",  os.path.join(HOME_DIR, ".vimrc.lua")),
+        ("./vim/.vim_common", os.path.join(HOME_DIR,".vim_common")),
+    ])
+
 
     for source, target in files_to_link:
             create_symlink(os.path.join(setup_misc_dir, source), target)
