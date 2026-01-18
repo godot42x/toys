@@ -104,14 +104,14 @@ def install_vim_plug():
 
         # vim
         vim_plug_vim_target = os.path.join(HOME_DIR, "vimfiles", "autoload", "plug.vim")
-        run_command(["powershell", "-Command", f'iwr -useb https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim | ni "{vim_plug_vim_target}" -Force'])
+        run_command(["pwsh", "-Command", f'iwr -useb https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim | New-Item "{vim_plug_vim_target}" -Force'])
 
         # Install vim-plug for Neovim
         LOCALAPPDATA_DIR = os.getenv("LOCALAPPDATA", os.path.join(HOME_DIR, "AppData", "Local"))
 
         nvim_data_dir = os.getenv( "XDG_DATA_HOME", os.path.join(LOCALAPPDATA_DIR, "nvim-data"))
         vim_plug_nvim_target = os.path.join(nvim_data_dir, "site", "autoload", "plug.vim")
-        run_command(["powershell", "-Command", f'iwr -useb https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim | ni "{vim_plug_nvim_target}" -Force'])
+        run_command(["pwsh", "-Command", f'iwr -useb https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim | New-Item "{vim_plug_nvim_target}" -Force'])
 
 
 def set_fish_as_default_shell():
