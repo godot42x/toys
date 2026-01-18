@@ -43,7 +43,7 @@ Plug 'pboettch/vim-cmake-syntax'
 "Plug 'puremourning/vimspector'
 
 " All of your Plugins must be added before the following line
-Plug 'Exafunction/codeium.vim'
+"Plug 'Exafunction/codeium.vim'
 call plug#end()            " required
 
 
@@ -92,15 +92,20 @@ set laststatus=2
 let g:lightline = {
       \ 'component_function': {
       \   'filename': 'LightlineFilename',
-      \   'codeium': 'CodeiumStatusString',
       \ }
       \ }
+"let g:lightline = {
+"      \ 'component_function': {
+"      \   'filename': 'LightlineFilename',
+"      \   'codeium': 'CodeiumStatusString',
+"      \ }
+"      \ }
 function! LightlineFilename()
   return expand('%')  
 endfunction
-function! CodeiumStatusString()
-	return eval(\{…\}%3{codeium#GetStatusString()})
-endfunction
+"function! CodeiumStatusString()
+"	return eval(\{…\}%3{codeium#GetStatusString()})
+"endfunction
 
 let g:rainbow_active=1
 
@@ -163,14 +168,14 @@ function! DoComplete()
   return "\<TAB>"
 endfunction
 
-imap <script><silent><nowait><expr> <TAB> DoComplete()
+"imap <script><silent><nowait><expr> <TAB> DoComplete()
 
-let g:codeium_disable_bindings = 1
-"imap <script><silent><nowait><expr> <C-l> codeium#AcceptNextLine()	
-imap <script><silent><nowait><expr> <C-space> codeium#AcceptNextLine()
-imap <C-Down>   <Cmd>call codeium#CycleCompletions(1)<CR>
-imap <C-Up>   <Cmd>call codeium#CycleCompletions(-1)<CR>
-imap <C-x>   <Cmd>call codeium#Clear()<CR>
+"let g:codeium_disable_bindings = 1
+""imap <script><silent><nowait><expr> <C-l> codeium#AcceptNextLine()	
+"imap <script><silent><nowait><expr> <C-space> codeium#AcceptNextLine()
+"imap <C-Down>   <Cmd>call codeium#CycleCompletions(1)<CR>
+"imap <C-Up>   <Cmd>call codeium#CycleCompletions(-1)<CR>
+"imap <C-x>   <Cmd>call codeium#Clear()<CR>
 "
 " use space to esaced completion context window
 " then use tab to accept complete
