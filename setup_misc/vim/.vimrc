@@ -232,6 +232,13 @@ endfunction
 " Map Shift+Alt+C to the function
 nnoremap <S-A-C> :call CopyFileNameToClipboard()<CR>
 
+noremap <A-o> :call TrySwitchHeaderAndSource()<CR>
+function TrySwitchHeaderAndSource()
+	let filetype = &ft
+	if filetype == 'cpp'
+		:A 
+	endif
+endfunction
 
 
 function ToggleFloatTerm()
