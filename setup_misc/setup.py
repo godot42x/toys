@@ -4,14 +4,7 @@ import platform
 import subprocess
 import sys
 import shutil
-from colorama import Fore, Back, Style
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-HOME_DIR = os.path.expanduser("~")
-
-SCRIPT_DIR=  SCRIPT_DIR.replace("\\", "/")
-print(f"SCRIPT_DIR={SCRIPT_DIR}")
-assert SCRIPT_DIR.endswith("toys/setup_misc")
 
 def run_command(command, shell=False):
     """Run a shell command and check for errors."""
@@ -32,6 +25,28 @@ def install_packages(install_command, packages):
             run_command(cmd)
         else:
             run_command([install_command, package])
+
+def is_pacman():
+    return subprocess.run(["which", "pacman"], stdout=subprocess.PIPE).returncode == 0;
+
+
+if is_pacman():
+    run_command("pacman -S --noconfirm python-colorama",shell=True)
+
+
+
+
+
+from colorama import Fore, Back, Style
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+HOME_DIR = os.path.expanduser("~")
+print(f"HOME_DIR : ${HOME_DIR}    ")
+
+SCRIPT_DIR=  SCRIPT_DIR.replace("\\", "/")
+print(f"SCRIPT_DIR={SCRIPT_DIR}")
+assert SCRIPT_DIR.endswith("toys/setup_misc")
+
 
 
 def create_symlink(src, dst):
@@ -54,17 +69,26 @@ def create_symlink(src, dst):
     print(f"Destination is a symlink: {os.path.islink(dst)}")
     print(f"Destination is a directory: {os.path.isdir(dst)}")
     print(f"Destination is a file: {os.path.isfile(dst)}")
+
+	 # 步骤1：安全删除目标路径（如果存在）
     if os.path.exists(dst) or os.path.islink(dst):
-        print(f"Removing existing file or directory or link: {dst}")
-        try: 
-            if os.path.isdir(dst):
-                os.rmdir(dst)
-            elif os.path.islink(dst):
-                os.remove(dst)
+        print(f"Removing existing file/link/directory: {dst}")
+        try:
+            if os.path.islink(dst):
+                os.unlink(dst)  # 删除软链接
+            elif os.path.isdir(dst):
+                shutil.rmtree(dst)  # 删除目录（含非空）
             else:
-                os.remove(dst)
+                os.remove(dst)  # 删除文件
         except Exception as e:
-            prinf(f"failed to remvoe {dst}, {e}")
+            print(f"Warning: Failed to remove {dst} (error: {e}), but continue...")
+
+    # 步骤2：确保目标路径的父目录存在（避免 No such file or directory）
+    dst_dir = os.path.dirname(dst)
+    if not os.path.exists(dst_dir):
+        os.makedirs(dst_dir, exist_ok=True)
+        print(f"Created parent directory: {dst_dir}")
+
 
     # Create the symbolic link
     print(f"os.symlink ({src}, {dst})")
@@ -74,6 +98,7 @@ def create_symlink(src, dst):
     print("-----------------------------")
 
 
+
 def install_vim_plug():
 
     system = platform.system()
@@ -81,7 +106,8 @@ def install_vim_plug():
 
 
     if system == "Linux":
-        vim_plug_dir = os.path.join("/tmp/vim-setup", "vim-plug")
+        vim_plug_dir = os.path.join(HOME_DIR, "tmp/vim-setup", "vim-plug")
+        print(f"vim_plug_dir ${vim_plug_dir}")
         if not os.path.exists(vim_plug_dir):
             run_command(["git", "clone", "https://github.com/junegunn/vim-plug.git", vim_plug_dir])
 
@@ -113,6 +139,97 @@ def install_vim_plug():
         vim_plug_nvim_target = os.path.join(nvim_data_dir, "site", "autoload", "plug.vim")
         run_command(["pwsh", "-Command", f'iwr -useb https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim | New-Item "{vim_plug_nvim_target}" -Force'])
 
+
+def create_config_links():
+
+    system = platform.system()
+    setup_misc_dir = SCRIPT_DIR
+
+    # Create symbolic links
+    files_to_link= []
+    if system == "Linux":
+        files_to_link = [
+            # vim
+            #("./vim/.bashrc", os.path.join(HOME_DIR, ".bashrc")),
+            #("./vim/.vimrc", os.path.join(HOME_DIR, ".vimrc")),
+            #("./vim/.ideavimrc", os.path.join(HOME_DIR, ".ideavimrc")),
+            # coc
+            ("coc-settings.json", os.path.join(HOME_DIR, ".config", "nvim", "coc-settings.json")),
+            ("coc-settings.json", os.path.join(HOME_DIR, ".vim", "coc-settings.json")),
+            # neon-vim
+            ("init.lua", os.path.join(HOME_DIR, ".config", "nvim", "init.lua")),
+            #("init.lua",  os.path.join(HOME_DIR, ".vimrc.lua")),
+            # fish
+            ("config.fish", os.path.join(HOME_DIR, ".config", "fish", "config.fish")),
+            ("config.fish", os.path.join(HOME_DIR,  ".fishrc")),
+        ]
+    elif system == "Windows":
+        files_to_link = [
+            # vim
+            ("init.lua", os.path.join(HOME_DIR, "AppData", "Local", "nvim", "init.lua")),
+
+            ("coc-settings.json", os.path.join(HOME_DIR, "AppData", "Local", "nvim", "coc-settings.json")),
+
+            ("Profile.ps1", os.path.join(HOME_DIR, "Documents", "PowerShell", "Profile.ps1")),
+            ("Profile.ps1", os.path.join(HOME_DIR,  ".pwshrc"))
+        ]
+
+
+    files_to_link.extend([
+        ("./vim/.vimrc", os.path.join(HOME_DIR, ".vimrc")),
+        ("./vim/.ideavimrc", os.path.join(HOME_DIR, ".ideavimrc")),
+        ("./vim/.vsvimrc", os.path.join(HOME_DIR, ".vsvimrc")),
+        ("./vim/.vscodevimrc", os.path.join(HOME_DIR, ".vscodevimrc")),
+        ("init.lua",  os.path.join(HOME_DIR, ".vimrc.lua")),
+        ("./vim/.vim_common", os.path.join(HOME_DIR,".vim_common")),
+    ])
+
+
+    for source, target in files_to_link:
+            create_symlink(os.path.join(setup_misc_dir, source), target)
+
+def install_minimal_apps():
+    # Determine the operating system
+    system = platform.system()
+
+    # Change directory to the setup_misc directory
+
+    # install packages
+    install_command = None
+    if system == "Linux":
+        # Check for package manager
+        if subprocess.run(["which", "apt-get"], stdout=subprocess.PIPE).returncode == 0:
+            run_command(["sudo", "apt-get", "update"])
+            run_command(["sudo", "apt-get", "upgrade", "-y"])
+            install_command = "sudo apt-get install -y"
+        elif subprocess.run(["which", "pacman"], stdout=subprocess.PIPE).returncode == 0:
+            run_command(["sudo", "pacman", "-Syyu"])
+            install_command = "sudo pacman -S --noconfirm"
+        elif subprocess.run(["which", "yum"], stdout=subprocess.PIPE).returncode == 0:
+            run_command(["sudo", "yum", "update", "-y"])
+            install_command = "sudo yum install -y"
+        else:
+            print("Unsupported package manager. Please define PKG variable manually.")
+            sys.exit(1)
+
+        install_command = install_command.split(" ")
+
+        # List of packages to install
+        packages = ["git", "clang", "llvm", "nodejs", "npm", "fish", "vim", "neovim", "pyenv"]
+
+        # Install packages
+        install_packages(install_command, packages)
+    elif system == "Windows":
+        install_command = "winget install"
+        install_command = install_command.split(" ")
+
+        # List of packages to install using winget
+        packages = ["vim.vim", "neovim.neovim", "llvm.llvm"]
+        install_packages(install_command, packages)
+
+    else:
+        print("Unsupported operating system.")
+        sys.exit(1)
 
 def set_fish_as_default_shell():
     # Get the full path of Fish
@@ -148,94 +265,15 @@ def set_fish_as_default_shell():
 
 
 def main():
-    # Determine the operating system
     system = platform.system()
 
-    # Change directory to the setup_misc directory
-    setup_misc_dir = SCRIPT_DIR
+    create_config_links()
+    install_minimal_apps()
 
-    # Create symbolic links
-    files_to_link= []
-    if system == "Linux":
-        files_to_link = [
-            # vim
-            #("./vim/.bashrc", os.path.join(HOME_DIR, ".bashrc")),
-            #("./vim/.vimrc", os.path.join(HOME_DIR, ".vimrc")),
-            #("./vim/.ideavimrc", os.path.join(HOME_DIR, ".ideavimrc")),
-            # coc
-            ("coc-settings.json", os.path.join(HOME_DIR, ".config", "nvim", "coc-settings.json")),
-            ("coc-settings.json", os.path.join(HOME_DIR, ".vim", "coc-settings.json")),
-            # neon-vim
-            ("init.lua", os.path.join(HOME_DIR, ".config", "nvim", "init.lua")),
-            #("init.lua",  os.path.join(HOME_DIR, ".vimrc.lua")),
-            # fish
-            ("config.fish", os.path.join(HOME_DIR, ".config", "fish", "config.fish")),
-            ("config.fish", os.path.join(HOME_DIR,  ".fishrc")),
-        ]
-    elif system == "Windows":
-        files_to_link = [
-            # vim
-            ("init.lua", os.path.join(HOME_DIR, "AppData", "Local", "nvim", "init.lua")),
-
-            ("coc-settings.json", os.path.join(HOME_DIR, "AppData", "Local", "nvim", "coc-settings.json")),
-
-            ("Profile.ps1", os.path.join(HOME_DIR, "Documents", "PowerShell", "Profile.ps1")),
-            ("Profile.ps1", os.path.join(HOME_DIR,  ".pwshrc"))
-        ]
-
-    files_to_link.extend([
-        ("./vim/.vimrc", os.path.join(HOME_DIR, ".vimrc")),
-        ("./vim/.ideavimrc", os.path.join(HOME_DIR, ".ideavimrc")),
-        ("./vim/.vsvimrc", os.path.join(HOME_DIR, ".vsvimrc")),
-        ("./vim/.vscodevimrc", os.path.join(HOME_DIR, ".vscodevimrc")),
-        ("init.lua",  os.path.join(HOME_DIR, ".vimrc.lua")),
-        ("./vim/.vim_common", os.path.join(HOME_DIR,".vim_common")),
-    ])
-
-
-    for source, target in files_to_link:
-            create_symlink(os.path.join(setup_misc_dir, source), target)
-
-
-    # install packages
-    install_command = None
-    if system == "Linux":
-        # Check for package manager
-        if subprocess.run(["which", "apt-get"], stdout=subprocess.PIPE).returncode == 0:
-            run_command(["sudo", "apt-get", "update"])
-            run_command(["sudo", "apt-get", "upgrade", "-y"])
-            install_command = "sudo apt-get install -y"
-        elif subprocess.run(["which", "pacman"], stdout=subprocess.PIPE).returncode == 0:
-            run_command(["sudo", "pacman", "-Syyu"])
-            install_command = "sudo pacman -S --noconfirm"
-        elif subprocess.run(["which", "yum"], stdout=subprocess.PIPE).returncode == 0:
-            run_command(["sudo", "yum", "update", "-y"])
-            install_command = "sudo yum install -y"
-        else:
-            print("Unsupported package manager. Please define PKG variable manually.")
-            sys.exit(1)
-
-        install_command = install_command.split(" ")
-
-        # List of packages to install
-        packages = ["git", "clang", "llvm", "nodejs", "npm", "fish"]
-
-        # Install packages
-        install_packages(install_command, packages)
-    elif system == "Windows":
-        install_command = "winget install"
-        install_command = install_command.split(" ")
-
-        # List of packages to install using winget
-        packages = ["vim.vim", "neovim.neovim", "llvm.llvm"]
-        install_packages(install_command, packages)
-
-    else:
-        print("Unsupported operating system.")
-        sys.exit(1)
 
     if system == "Linux" :
         set_fish_as_default_shell()
+        pass
     install_vim_plug()
 
     # Change back to home directory

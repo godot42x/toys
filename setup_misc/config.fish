@@ -116,9 +116,31 @@ function fish_prompt
 	echo -n (set_color normal)" \$ "
 end
 
+# WSL代理一键开关
+set proxy_port 61234
+function proxy_on 
+    export WINDOWS_IP=$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}')
+    export http_proxy=http://$WINDOWS_IP:$proxy_port
+    export https_proxy=http://$WINDOWS_IP:$proxy_port
+    export all_proxy=http://$WINDOWS_IP:$proxy_port
+    echo "WSL代理已开启：$http_proxy"
+end
+function proxy_off 
+    unset http_proxy https_proxy all_proxy
+    git config --global --unset http.proxy
+    git config --global --unset https.proxy
+    echo "WSL代理已关闭"
+end
+function proxy_status 
+    echo "http_proxy: $http_proxy"
+    echo "https_proxy: $https_proxy"
+    curl -s https://ipinfo.io/ip && echo
+end
+
+
 # Add Go paths to PATH
-set -x PATH $PATH (go env GOPATH)/bin
-set -x PATH $PATH (go env GOROOT)/bin
+#set -x PATH $PATH (go env GOPATH)/bin
+#set -x PATH $PATH (go env GOROOT)/bin
 
 # Pyenv configuration
 set -x PYENV_ROOT ~/.pyenv
