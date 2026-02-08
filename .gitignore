@@ -20,12 +20,17 @@ compile_commands.json
 
 
 
-
 a.exe
 *.exe
 *.out
 *.ilk
 *.pdb
+*.zip
+*.rar
+*.exe
+*.jar
+*.so
+*.dll
 
 game/bevy
 *.swo
