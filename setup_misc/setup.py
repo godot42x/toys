@@ -1,9 +1,15 @@
 import contextlib
 import os
 import platform
+import shlex
 import subprocess
 import sys
 import shutil
+
+try:
+    import pwd
+except ImportError:
+    pwd = None
 
 
 def run_command(command, shell=False):
@@ -30,8 +36,71 @@ def is_pacman():
     return subprocess.run(["which", "pacman"], stdout=subprocess.PIPE).returncode == 0;
 
 
-if is_pacman():
-    run_command("pacman -S --noconfirm python-colorama",shell=True)
+# HOME used during bootstrap (before HOME_DIR is defined below).
+HOME_DIR_EARLY = os.path.expanduser("~")
+
+
+def _ensure_uv():
+    """Return the path to `uv`, installing it if necessary."""
+    uv = shutil.which("uv")
+    if uv:
+        return uv
+
+    system = platform.system()
+    print("uv not found, installing...")
+    if system == "Darwin":
+        if shutil.which("brew"):
+            run_command(["brew", "install", "uv"])
+        else:
+            run_command('curl -LsSf https://astral.sh/uv/install.sh | sh', shell=True)
+    elif is_pacman():
+        run_command("pacman -S --noconfirm uv", shell=True)
+    elif system == "Windows":
+        run_command(
+            'powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"',
+            shell=True,
+        )
+    else:
+        run_command('curl -LsSf https://astral.sh/uv/install.sh | sh', shell=True)
+
+    # Installer drops uv into ~/.local/bin or ~/.cargo/bin; add to PATH for this process.
+    extra_paths = [
+        os.path.join(HOME_DIR_EARLY, ".local", "bin"),
+        os.path.join(HOME_DIR_EARLY, ".cargo", "bin"),
+    ]
+    os.environ["PATH"] = os.pathsep.join(
+        [p for p in extra_paths if os.path.isdir(p)] + [os.environ.get("PATH", "")]
+    )
+    uv = shutil.which("uv")
+    if not uv:
+        print("Failed to install uv automatically. "
+              "Please install it manually: https://docs.astral.sh/uv/")
+        sys.exit(1)
+    return uv
+
+
+def _ensure_colorama():
+    """Make `import colorama` work. If missing, re-exec under `uv run --with colorama`."""
+    try:
+        import colorama  # noqa: F401
+        return
+    except ImportError:
+        pass
+
+    # Avoid infinite re-exec loops.
+    if os.environ.get("_SETUP_UV_BOOTSTRAPPED") == "1":
+        print("colorama still missing after uv re-exec; aborting.")
+        sys.exit(1)
+
+    uv = _ensure_uv()
+    env = os.environ.copy()
+    env["_SETUP_UV_BOOTSTRAPPED"] = "1"
+    cmd = [uv, "run", "--with", "colorama", "python", os.path.abspath(__file__)] + sys.argv[1:]
+    print(f"\n-- re-exec under uv: {cmd}")
+    os.execvpe(cmd[0], cmd, env)
+
+
+_ensure_colorama()
 
 
 
@@ -105,7 +174,7 @@ def install_vim_plug():
     # Install vim-plug for Vim and Neovim
 
 
-    if system == "Linux":
+    if system in ("Linux", "Darwin"):
         vim_plug_dir = os.path.join(HOME_DIR, "tmp/vim-setup", "vim-plug")
         print(f"vim_plug_dir ${vim_plug_dir}")
         if not os.path.exists(vim_plug_dir):
@@ -147,7 +216,7 @@ def create_config_links():
 
     # Create symbolic links
     files_to_link= []
-    if system == "Linux":
+    if system in ("Linux", "Darwin"):
         files_to_link = [
             # vim
             #("./vim/.bashrc", os.path.join(HOME_DIR, ".bashrc")),
@@ -215,9 +284,22 @@ def install_minimal_apps():
         install_command = install_command.split(" ")
 
         # List of packages to install
-        packages = ["git", "clang", "llvm", "nodejs", "npm", "fish", "vim", "neovim", "pyenv"]
+        packages = ["git", "clang", "llvm", "nodejs", "npm", "fish", "vim", "neovim" ]
 
         # Install packages
+        install_packages(install_command, packages)
+    elif system == "Darwin":
+        # Ensure Homebrew is available; install it if missing.
+        if subprocess.run(["which", "brew"], stdout=subprocess.PIPE).returncode != 0:
+            print("Homebrew not found, installing...")
+            run_command(
+                '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"',
+                shell=True,
+            )
+        run_command(["brew", "update"])
+        install_command = ["brew", "install"]
+        # clang ships with Xcode CLT; node bundles npm.
+        packages = ["git", "llvm", "node", "fish", "vim", "neovim"]
         install_packages(install_command, packages)
     elif system == "Windows":
         install_command = "winget install"
@@ -234,34 +316,77 @@ def install_minimal_apps():
 def set_fish_as_default_shell():
     # Get the full path of Fish
     fish_path = shutil.which("fish")
-        
+
     if not fish_path:
         print("Fish shell is not installed. Please install Fish first.")
+        return
+
+    # Early exit if fish is already the current user's default shell — avoids
+    # needing sudo for /etc/shells or prompting for the chsh password.
+    if pwd is not None:
+        try:
+            current_shell = pwd.getpwuid(os.getuid()).pw_shell
+        except Exception:
+            current_shell = os.environ.get("SHELL", "")
+    else:
+        current_shell = os.environ.get("SHELL", "")
+
+    already_fish = False
+    if current_shell:
+        if current_shell.endswith("/fish") or current_shell == "fish":
+            already_fish = True
+        elif os.path.basename(current_shell) == "fish":
+            already_fish = True
+        else:
+            try:
+                if os.path.realpath(current_shell) == os.path.realpath(fish_path):
+                    already_fish = True
+            except Exception:
+                pass
+
+    if already_fish:
+        print(f"Fish is already the default shell ({current_shell}); skipping /etc/shells update and chsh.")
         return
 
     # Check if Fish is already in /etc/shells
     with open("/etc/shells", "r") as f:
         content = f.read()
-        if fish_path in content:
-            print(f"Fish is already listed in /etc/shells: {fish_path}")
-        elif "/bin/fish" in content:
-            fish_path = "/bin/fish"
-        else:
-            # Add Fish to /etc/shells
-            try:
-                with open("/etc/shells", "a") as f:
-                    f.write(f"{fish_path}\n")
-                print(f"Added Fish to /etc/shells: {fish_path}")
-            except PermissionError:
-                print("Permission denied. Run the script with sudo.")
-                return
 
-    # Set Fish as the default shell
+    print("=" * 20)
+    print("[SUDO] try to change system shell")
+    if fish_path in content:
+        print(f"Fish is already listed in /etc/shells: {fish_path}")
+    elif "/bin/fish" in content and os.path.exists("/bin/fish"):
+        fish_path = "/bin/fish"
+        print(f"Using existing /bin/fish entry in /etc/shells: {fish_path}")
+    else:
+        # Add Fish to /etc/shells via sudo
+        try:
+            subprocess.run(
+                ["sudo", "sh", "-c", f'echo {shlex.quote(fish_path)} >> /etc/shells'],
+                check=True,
+            )
+            print(f"Added Fish to /etc/shells: {fish_path}")
+        except subprocess.CalledProcessError as e:
+            print(
+                f"Failed to append {fish_path} to /etc/shells via sudo ({e}). "
+                f"Please re-run the script with sudo access, or add the line "
+                f"'{fish_path}' to /etc/shells manually."
+            )
+            return
+
+    # Set Fish as the default shell (chsh changes the current user's shell and
+    # prompts for that user's password, so sudo is not needed here).
     try:
-        run_command([ "chsh", "-s", fish_path])
+        print(f"\n-- chsh -s {fish_path}")
+        subprocess.run(["chsh", "-s", fish_path], check=True)
         print(f"Fish shell has been set as the default shell: {fish_path}")
     except subprocess.CalledProcessError as e:
-        print(f"Failed to set Fish as the default shell: {e}")
+        print(
+            f"Failed to set Fish as the default shell: {e}. "
+            f"Please run 'chsh -s {fish_path}' manually."
+        )
+        return
 
 
 def main():
@@ -271,9 +396,11 @@ def main():
     install_minimal_apps()
 
 
-    if system == "Linux" :
+    if system in ("Linux", "Darwin") :
         set_fish_as_default_shell()
         pass
+    else:
+        print(f"unkown system : ${system}");
     install_vim_plug()
 
     # Change back to home directory

@@ -1,8 +1,14 @@
 # vim: set ft=bash:
 # ~/.config/fish/config.fish
 
-# Source global Fish configuration
-source /etc/fish/config.fish
+# Source global Fish configuration (Linux: /etc/fish; macOS Homebrew: /opt/homebrew or /usr/local)
+for __global_fish_config in /etc/fish/config.fish /opt/homebrew/etc/fish/config.fish /usr/local/etc/fish/config.fish
+    if test -f $__global_fish_config
+        source $__global_fish_config
+        break
+    end
+end
+set -e __global_fish_config
 
 # If not running interactively, don't do anything
 if not status is-interactive
@@ -10,7 +16,12 @@ if not status is-interactive
 end
 
 # Aliases
-alias ls='ls --color=auto'
+if test (uname) = Darwin
+    # BSD ls on macOS
+    alias ls='ls -G'
+else
+    alias ls='ls --color=auto'
+end
 
 # Set ls background color(for bash)
 #eval (dircolors -p | sed 's/ 4[0-9];/ 01;/; s/;4[0-9];/;01;/g; s/;4[0-9] /;01 /' | dircolors /dev/stdin)
@@ -119,6 +130,10 @@ end
 # WSL代理一键开关
 set proxy_port 61234
 function proxy_on 
+    if not test -f /etc/resolv.conf
+        echo "proxy_on: /etc/resolv.conf not found (not a WSL/Linux host?)"
+        return 1
+    end
     export WINDOWS_IP=$(cat /etc/resolv.conf | grep nameserver | awk '{print $2}')
     export http_proxy=http://$WINDOWS_IP:$proxy_port
     export https_proxy=http://$WINDOWS_IP:$proxy_port
@@ -152,7 +167,15 @@ pyenv init - | source
 set -x CARGO_NET_GIT_FETCH_WITH_CLI true
 
 # Node.js configuration
-set -x NODE_PATH /usr/lib/node_modules
+if test (uname) = Darwin
+    if test -d /opt/homebrew/lib/node_modules
+        set -x NODE_PATH /opt/homebrew/lib/node_modules
+    else if test -d /usr/local/lib/node_modules
+        set -x NODE_PATH /usr/local/lib/node_modules
+    end
+else
+    set -x NODE_PATH /usr/lib/node_modules
+end
 
 # Aliases
 alias gr="go run"
@@ -172,8 +195,10 @@ source ~/.bashrc_locale.fish
 source ~/.cargo/env
 
 # WSL proxy configuration
-set nameserver (grep -m 1 nameserver /etc/resolv.conf | awk '{print $2}')
-set port 10809
+if test -f /etc/resolv.conf
+    set nameserver (grep -m 1 nameserver /etc/resolv.conf | awk '{print $2}')
+    set port 10809
+end
 #set -x http_proxy http://$nameserver:$port
 #set -x https_proxy http://$nameserver:$port
 #set -x all_proxy http://$nameserver:$port
@@ -182,7 +207,7 @@ set port 10809
 # set -x DISPLAY $nameserver:0
 
 # Xmake configuration
-if test -f "/root/.xmake/profile"
-    source "/root/.xmake/profile"
+if test -f "$HOME/.xmake/profile"
+    source "$HOME/.xmake/profile"
 end
 git config --global alias.s status
